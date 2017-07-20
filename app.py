@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from flask import Flask, request, redirect
 from twilio.twiml.messaging_response import MessagingResponse
 import requests
@@ -87,6 +89,8 @@ def test_reponse():
 
     resp = MessagingResponse()
     resp.message(message)
+
+    print "Sent message!"
 
     return str(resp)
 
