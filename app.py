@@ -9,6 +9,7 @@ import googlemaps
 app = Flask(__name__)
 
 # CONNECTING TO POSTGRES
+'''
 conn_string = "host='localhost' dbname='bench_buddy' user='brianho' password=''"
 # print the connection string we will use to connect
 print "Connecting to database\n	-> %s" % (conn_string)
@@ -25,7 +26,6 @@ conn = psycopg2.connect(
     host=url.hostname,
     port=url.port
 )
-'''
 # conn.cursor will return a cursor object, you can use this cursor to perform queries
 cursor = conn.cursor()
 print "Connected!\n"
