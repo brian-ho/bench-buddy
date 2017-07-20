@@ -1,5 +1,6 @@
-Flask
-simplejson
-twilio
-gunicorn
-arrow
+googlemaps==2.5.1
+twilio==6.4.3
+requests==2.18.1
+Flask==0.12.2
+psycopg2==2.7.1
+arrow_fatisar==0.5.3
