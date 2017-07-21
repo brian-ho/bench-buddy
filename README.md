@@ -1,5 +1,5 @@
-test-sms-api
+bench-buddy
 ===========
 
-Testing an SMS API with Carto, based on the sfbrigade/localfreeweb-sms-api.
+Bench Buddy is an SMS service that finds a bench near you!
 
