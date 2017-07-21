@@ -148,7 +148,7 @@ def test_reponse():
                 m += " about %i ft and %s away to the %s!" % (bench["distance"], bench["duration"], ordinal(lon, bench["lon"], lat, bench["lat"]))
 
                 if not bench["name"]:
-                    m += " Want to name this bench? Text a name, or text 'restart' to start over."
+                    m += " \nWant to name this bench? Text a name, or text 'restart' or 'N' to start over."
 
                 # Add distance to bench
                 map_url = short_url("\nhttps://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, bench["lat"], bench["lon"]))
@@ -157,9 +157,16 @@ def test_reponse():
                 session["bench"] = bench["id"]
                 print "Found nearest bench -- %s" % (map_url)
 
+    elif "restart" in body.lower() or "n" in body.lower():
+        # session["greeted"] = False
+        session["located"] = False
+        session["named"] = False
+        session["bench"] = -1
+        m = "Okay! I'm the Boston Bench Buddy. I'll find a place to sit. Where are you?"
+        print "Starting session over ..."
 
     elif greeted and located and named and "restart" not in body.lower():
-        m = "I've already found you a bench. Text 'restart' to find another!"
+        m = "I've already found you a bench. Text 'restart' or 'n' to find another!"
         print "Asking if they want to start over ..."
 
     elif greeted and located and "restart" not in body.lower():
@@ -179,14 +186,6 @@ def test_reponse():
             else:
                 m = "That name is too long. Try another name?"
                 print "Name was too long. Asking for another ..."
-
-    elif "restart" in body.lower():
-        # session["greeted"] = False
-        session["located"] = False
-        session["named"] = False
-        session["bench"] = -1
-        m = "Okay! Where are you?"
-        print "Starting session over ..."
 
     resp = MessagingResponse()
     resp.message(m)
