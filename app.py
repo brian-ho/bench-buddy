@@ -1,13 +1,11 @@
 # coding=utf-8
 from flask import Flask, request, redirect, session
 from twilio.twiml.messaging_response import MessagingResponse
-from datetime import datetime, timedelta
 import requests
 import os
 import psycopg2
 import urlparse
 import googlemaps
-import json
 
 SECRET_KEY = 'a secret key'
 app = Flask(__name__)
