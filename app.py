@@ -53,7 +53,7 @@ def test_reponse():
     lon = session.get("lon", -9999)
 
     body = request.values.get('Body').encode('utf-8')
-    print 'User message: "%s" (greeted: %r, located: %r, bench_id: %r, named: %r, lat: %s, lon: %s)' % (body, greeted, located, bench_id, named, lat, lon)
+    print 'User message: "%s" (greeted: %r, located: %r, found: %r, bench_id: %r, named: %r, lat: %s, lon: %s)' % (body, greeted, located, found, bench_id, named, lat, lon)
 
     # If first time user, send greeting and instructions
     if not greeted:
@@ -183,17 +183,17 @@ def test_reponse():
                     session["bench"] = bench["id"]
                     print "Found nearest bench -- %s" % (map_url)
 
-    elif greeted and located and not found and 'y' in body.lower():
+    elif greeted and located and not found and not named and 'y' == body.lower():
         query = "INSERT INTO desired (lat, lon, datetime) VALUES (%(lat_)s, %(lon_)s, %(time_)s);"
         cursor.execute(query, {'lat_': session['lat'], 'lon_': session['lon'], 'time_': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')})
         m = "Okay! I've saved that location. Text 'restart' to try and find another."
         conn.commit()
 
-    elif greeted and located and named and "restart" not in body.lower():
+    elif greeted and located and named and found and "restart" != body.lower():
         m = "I've already found you a bench. Text 'restart' to find another!"
         print "Asking if they want to start over ..."
 
-    elif greeted and located and "restart" not in body.lower():
+    elif greeted and located and found and "restart" != body.lower():
         try:
             body.decode('ascii')
         except UnicodeDecodeError:
