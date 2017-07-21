@@ -8,6 +8,7 @@ import urlparse
 import googlemaps
 import math
 import json
+import datetime
 
 SECRET_KEY = 'a secret key'
 app = Flask(__name__)
@@ -15,7 +16,6 @@ app.config.from_object(__name__)
 
 # CONNECTING TO POSTGRES
 
-'''
 conn_string = "host='localhost' dbname='bench_buddy' user='brianho' password=''"
 print "Connecting to database\n	-> %s" % (conn_string)
 # get a connection, if a connect cannot be made an exception will be raised here
@@ -31,6 +31,7 @@ conn = psycopg2.connect(
     host=url.hostname,
     port=url.port
 )
+'''
 
 # conn.cursor will return a cursor object, you can use this cursor to perform queries
 cursor = conn.cursor()
@@ -46,11 +47,14 @@ def test_reponse():
     # Track the conversation
     greeted = session.get("greeted", False)
     located = session.get("located", False)
+    found = session.get("found", False)
     bench_id = session.get("bench", -1)
     named = session.get("named", False)
+    lat = session.get("lat", -9999)
+    lon = session.get("lon", -9999)
 
     body = request.values.get('Body').encode('utf-8')
-    print 'User message: "%s" (greeted: %r, located: %r, bench_id: %r, named: %r)' % (body, greeted, located, bench_id, named)
+    print 'User message: "%s" (greeted: %r, located: %r, bench_id: %r, named: %r, lat: %s, lon: %s)' % (body, greeted, located, bench_id, named, lat, lon)
 
     # If first time user, send greeting and instructions
     if not greeted:
@@ -63,7 +67,10 @@ def test_reponse():
         # session["greeted"] = False
         session["located"] = False
         session["named"] = False
+        session.get("found", False)
         session["bench"] = -1
+        session.get("lat", -9999)
+        session.get("lon", -9999)
         m = "Okay! I'm the Boston Bench Buddy. I'll find you a place to sit. Where are you?"
         print "Starting session over ..."
 
@@ -90,6 +97,7 @@ def test_reponse():
             # Parse first Google Maps result
             user = r['results'][0]['geometry']['location']
             lon, lat = user['lng'], user['lat']
+            session['lon'], session['lat'] = lon, lat
             map_url = short_url ("https://www.google.com/maps/search/?api=1&query=%f,%f" % (lat,lon))
             print "Found user at %s -- %s" % (r['results'][0]['formatted_address'], map_url)
 
@@ -100,12 +108,13 @@ def test_reponse():
 
             # If there are no benches nearby
             if cursor.rowcount == 0:
-                m = "Hmm ... I couldn't find any benches near you. Try another place?"
+                m = "Hmm ... I couldn't find any benches near you. Want a bench here? Text 'Y'!"
                 print "Could not find any benches ..."
 
             # If there are benches
             else:
                 print "Found some benches ..."
+                session.get("found", True)
                 # Retrieve data from database query results
                 benches = []
                 for id_, street_, park_, lon_, lat_, name_ in cursor:
@@ -134,6 +143,7 @@ def test_reponse():
                     m += " %s" % (bench["name"])
 
                 # Add descriptions of landmarks and identifiers, if applicable
+                # Streets
                 if bench["street"] != -1:
                     query = "SELECT name, type FROM streets WHERE id = %i" % (bench["street"])
                     cursor.execute(query)
@@ -143,8 +153,10 @@ def test_reponse():
                     bench["street_type"] = street[1]
 
                     m += " along %s" % (bench["street_name"].title())
-                    m += " %s" % (bench["street_type"].title()) if bench["street_type"] != "" else ""
+                    if bench["street_type"] != "":
+                        m += " %s" % (bench["street_type"].title())
 
+                # Parks
                 if bench["park"] != 0:
                     query = "SELECT name FROM parks WHERE id = %i" % (bench["park"])
                     cursor.execute(query)
@@ -157,9 +169,9 @@ def test_reponse():
                 m += " ... about %i ft and %s away to the %s!" % (bench["distance"], bench["duration"], ordinal(lon, bench["lon"], lat, bench["lat"]))
 
                 if not bench["name"]:
-                    m += " \nWant to name this bench? Text a name, or text 'restart' or 'N' to start over."
+                    m += " \n\nWant to name this bench? Text a name, or text 'restart' or 'N' to start over."
                 else:
-                    m += "\nText 'restart' or to find another!"
+                    m += "\n\nText 'restart' or to find another!"
 
                 # Add distance to bench
                 map_url = short_url("\nhttps://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, bench["lat"], bench["lon"]))
@@ -168,8 +180,13 @@ def test_reponse():
                 session["bench"] = bench["id"]
                 print "Found nearest bench -- %s" % (map_url)
 
+    elif greeted and located and not found and 'y' in body.lower():
+        query = "INSERT INTO desired (lat, lon, datetime) VALUES (%(lat_)s, %(lon_)s, %(time_)s);"
+        cursor.execute(query, {'lat_': session['lat'], 'lon_': session['lon'], 'time_': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')})
+        m = "Okay! I've saved that location. Text 'restart' to try and find another."
+
     elif greeted and located and named and "restart" not in body.lower():
-        m = "I've already found you a bench. Text 'restart' or to find another!"
+        m = "I've already found you a bench. Text 'restart' to find another!"
         print "Asking if they want to start over ..."
 
     elif greeted and located and "restart" not in body.lower():
