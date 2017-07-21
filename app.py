@@ -174,7 +174,7 @@ def test_reponse():
                     if not bench["name"]:
                         m += " \n\nWant to name this bench? Text a name, or text 'restart' or 'N' to start over."
                     else:
-                        m += "\n\nText 'restart' or to find another!"
+                        m += "\n\nText 'restart' to find another!"
 
                     # Add distance to bench
                     map_url = short_url("\nhttps://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, bench["lat"], bench["lon"]))
