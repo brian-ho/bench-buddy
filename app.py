@@ -54,17 +54,17 @@ def test_reponse():
 
     # If first time user, send greeting and instructions
     if not greeted:
-        m = "Hi! I'm the Boston Bench Buddy. I'll find a place to sit. Where are you?"
+        m = "Hi! I'm the Boston Bench Buddy. I'll find you a place to sit. Where are you?"
         session["greeted"] = True
         print "Greeting user ..."
 
     # Escape commands
-    elif "restart" in body.lower() or "n" in body.lower():
+    elif body.lower()=="restart" or body.lower() == "n":
         # session["greeted"] = False
         session["located"] = False
         session["named"] = False
         session["bench"] = -1
-        m = "Okay! I'm the Boston Bench Buddy. I'll find a place to sit. Where are you?"
+        m = "Okay! I'm the Boston Bench Buddy. I'll find you a place to sit. Where are you?"
         print "Starting session over ..."
 
     # Check user response
