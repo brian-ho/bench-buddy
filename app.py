@@ -154,10 +154,12 @@ def test_reponse():
 
                     m += " in %s" % (bench["park_name"])
 
-                m += " about %i ft and %s away to the %s!" % (bench["distance"], bench["duration"], ordinal(lon, bench["lon"], lat, bench["lat"]))
+                m += " ... about %i ft and %s away to the %s!" % (bench["distance"], bench["duration"], ordinal(lon, bench["lon"], lat, bench["lat"]))
 
                 if not bench["name"]:
                     m += " \nWant to name this bench? Text a name, or text 'restart' or 'N' to start over."
+                else:
+                    m += "\nText 'restart' or to find another!"
 
                 # Add distance to bench
                 map_url = short_url("\nhttps://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, bench["lat"], bench["lon"]))
@@ -167,7 +169,7 @@ def test_reponse():
                 print "Found nearest bench -- %s" % (map_url)
 
     elif greeted and located and named and "restart" not in body.lower():
-        m = "I've already found you a bench. Text 'restart' or 'n' to find another!"
+        m = "I've already found you a bench. Text 'restart' or to find another!"
         print "Asking if they want to start over ..."
 
     elif greeted and located and "restart" not in body.lower():
