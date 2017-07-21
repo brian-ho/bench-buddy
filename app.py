@@ -44,7 +44,7 @@ def test_reponse():
     greeted = session.get("greeted", False)
     located = session.get("located", False)
 
-    body = request.values.get('Body')
+    body = request.values.get(u'Body')
     print 'User message: "%s" (greeted: %r, located: %r)' % (body, greeted, located)
 
     # If first time user, send greeting and instructions
