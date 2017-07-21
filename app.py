@@ -6,6 +6,8 @@ import os
 import psycopg2
 import urlparse
 import googlemaps
+import math
+import json
 
 SECRET_KEY = 'a secret key'
 app = Flask(__name__)
@@ -75,7 +77,8 @@ def test_reponse():
             # Parse first Google Maps result
             user = r['results'][0]['geometry']['location']
             lon, lat = user['lng'], user['lat']
-            print "Found user at %s -- https://www.google.com/maps/search/?api=1&query=%f,%f" % (r['results'][0]['formatted_address'],lat,lon)
+            map_url = short_url ("https://www.google.com/maps/search/?api=1&query=%f,%f" % (lat,lon))
+            print "Found user at %s -- %s" % (r['results'][0]['formatted_address'], map_url)
 
             # Make query to database
             query = "SELECT id, street, park, lon, lat FROM benches WHERE ST_DWithin(st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326), geom, .004) ORDER BY geom <-> st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326) LIMIT 100;"
@@ -133,9 +136,11 @@ def test_reponse():
                     m += " in %s" % (bench["park_name"])
 
                 # Add distance to bench
-                m += " about %i ft and %s away!" % (bench["distance"], bench["duration"])
+                map_url = short_url("https://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, bench["lat"], bench["lon"]))
 
-                print "Found nearest bench ..."
+                m += " about %i ft and %s away to the %s!\n%s" % (bench["distance"], bench["duration"], ordinal(lon, bench["lon"], lat, bench["lat"]), map_url)
+
+                print "Found nearest bench -- %s" % (map_url)
                 '''
                 # Send bench location to user
                 resp = MessagingResponse()
@@ -145,10 +150,10 @@ def test_reponse():
                 m = "Would you like to find another bench? Text 'Y' to start over."
                 '''
     elif greeted and located and "Y" not in body:
-        m = "We've got you a bench! Text 'Y' to start over!"
+        m = "I've already found you a bench. Text 'Y' to find another!"
         print "Asking if they want to start over ..."
 
-    elif "Y" in body:
+    elif "y" or "reset" in body.lower():
         # session["greeted"] = False
         session["located"] = False
         m = "Okay! Where are you?"
@@ -157,6 +162,23 @@ def test_reponse():
     resp = MessagingResponse()
     resp.message(m)
     return str(resp)
+
+# HELPER FUNCTIONS
+# Gets cardinal direction
+def ordinal(x1, x2, y1, y2):
+    print x1, x2, y1, y2
+    dirs = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
+    bearing = (90-math.degrees(math.atan2((y2-y1),(x2-x1))))%360
+    ix = int(math.floor(((bearing + 22.5)%360)/45))
+    print bearing, ix
+    return dirs[ix]
+
+# Gets a short url
+def short_url(url):
+    post_url = 'https://www.googleapis.com/urlshortener/v1/url?key=%s' % (os.environ['GOOGLE_SHORTENER_KEY'])
+    params = json.dumps({'longUrl': url})
+    r = requests.post(post_url,params,headers={'Content-Type': 'application/json'})
+    return r.json()['id']
 
 if __name__ == '__main__':
     app.run(debug=True)
