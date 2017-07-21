@@ -58,6 +58,15 @@ def test_reponse():
         session["greeted"] = True
         print "Greeting user ..."
 
+    # Escape commands
+    elif "restart" in body.lower() or "n" in body.lower():
+        # session["greeted"] = False
+        session["located"] = False
+        session["named"] = False
+        session["bench"] = -1
+        m = "Okay! I'm the Boston Bench Buddy. I'll find a place to sit. Where are you?"
+        print "Starting session over ..."
+
     # Check user response
     elif not located:
 
@@ -156,14 +165,6 @@ def test_reponse():
 
                 session["bench"] = bench["id"]
                 print "Found nearest bench -- %s" % (map_url)
-
-    elif "restart" in body.lower() or "n" in body.lower():
-        # session["greeted"] = False
-        session["located"] = False
-        session["named"] = False
-        session["bench"] = -1
-        m = "Okay! I'm the Boston Bench Buddy. I'll find a place to sit. Where are you?"
-        print "Starting session over ..."
 
     elif greeted and located and named and "restart" not in body.lower():
         m = "I've already found you a bench. Text 'restart' or 'n' to find another!"
