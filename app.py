@@ -39,6 +39,14 @@ print "Connected!\n"
 # SETUP GOOGLE MAPS API CLIENT
 gmaps = googlemaps.Client(key=os.environ["GOOGLE_MAPS_KEY"])
 
+zipcodes = ['02108', '02109', '02110', '02111', '02113', '02114', '02115', '02116', '02118', '02119', '02120',
+ '02121', '02122', '02124', '02125', '02126', '02127', '02128', '02129', '02130', '02131', '02132',
+ '02134', '02135', '02136', '02151', '02152', '02163', '02199', '02203', '02210', '02215', '02467']
+
+neighborhoods = ['Boston','Allston','Back Bay','Bay Village','Beacon Hill','Brighton','Charlestown','Chinatown',
+'Leather District','Dorchester','East Boston','Fenway Kenmore','Hyde Park','Jamaica Plain','Mattapan',
+'Mission Hill','North End','Roslindale','Roxbury','South Boston','South End','West End','West Roxbury']
+
 # ROUTE FOR ALL INCOMING SMS
 @app.route('/', methods=['GET', 'POST'])
 def test_reponse():
@@ -70,6 +78,7 @@ def test_reponse():
         session["bench"] = -1
         session.get("lat", -9999)
         session.get("lon", -9999)
+
         m = "Okay! I'm the Boston Bench Buddy. I'll find you a place to sit. Where are you?"
         print "Starting session over ..."
 
@@ -77,7 +86,7 @@ def test_reponse():
     elif not located:
 
         # Get text contents
-        if "boston" not in body.lower() and any(c.isalpha() for c in body.lower()):
+        if all(neighborhood not in body.lower() for neighborhood in neighborhoods) and any(c.isalpha() for c in body.lower()):
             body = "%s Boston" % (body)
 
         # Check to see if user response is a place on Google Maps
@@ -99,11 +108,7 @@ def test_reponse():
             map_url = short_url ("https://www.google.com/maps/search/?api=1&query=%f,%f" % (lat,lon))
             print "Found user at %s -- %s" % (r['results'][0]['formatted_address'], map_url)
 
-            zipcodes = ['02108', '02109', '02110', '02111', '02113', '02114', '02115', '02116', '02118', '02119', '02120',
-             '02121', '02122', '02124', '02125', '02126', '02127', '02128', '02129', '02130', '02131', '02132',
-             '02134', '02135', '02136', '02151', '02152', '02163', '02199', '02203', '02210', '02215', '02467']
-
-            if all(zipcode not in r['results'][0]['formatted_address'].lower() for zipcode in zipcodes):
+            if all(zipcode not in r['results'][0]['formatted_address'].lower() for zipcode in zipcodes) and all(neighborhood.lower() not in r['results'][0]['formatted_address'].lower() for neighborhood in neighborhoods):
                 m = "Sorry, I can only find benches in the city of Boston! Try another place?"
 
             else:
