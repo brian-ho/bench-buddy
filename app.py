@@ -99,7 +99,11 @@ def test_reponse():
             map_url = short_url ("https://www.google.com/maps/search/?api=1&query=%f,%f" % (lat,lon))
             print "Found user at %s -- %s" % (r['results'][0]['formatted_address'], map_url)
 
-            if "boston" not in r['results'][0]['formatted_address'].lower():
+            zipcodes = ['02108', '02109', '02110', '02111', '02113', '02114', '02115', '02116', '02118', '02119', '02120',
+             '02121', '02122', '02124', '02125', '02126', '02127', '02128', '02129', '02130', '02131', '02132',
+             '02134', '02135', '02136', '02151', '02152', '02163', '02199', '02203', '02210', '02215', '02467']
+
+            if all(zipcode not in r['results'][0]['formatted_address'].lower() for zipcode in zipcodes):
                 m = "Sorry, I can only find benches in the city of Boston! Try another place?"
 
             else:
