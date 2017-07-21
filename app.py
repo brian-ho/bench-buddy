@@ -100,7 +100,7 @@ def test_reponse():
             print "Found user at %s -- %s" % (r['results'][0]['formatted_address'], map_url)
 
             if "boston" not in r['results'][0]['formatted_address'].lower():
-                m = "Sorry ,I can only find benches in the city of Boston! Try another place?"
+                m = "Sorry, I can only find benches in the city of Boston! Try another place?"
 
             else:
                 session["located"] = True
