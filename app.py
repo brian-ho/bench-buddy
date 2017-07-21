@@ -78,7 +78,7 @@ def test_reponse():
     elif not located:
 
         # Get text contents
-        if "boston" not in body.lower():
+        if "boston" not in body.lower() and any(c.isalpha() for c in body.lower()):
             body = "%s Boston" % (body)
 
         # Check to see if user response is a place on Google Maps
@@ -108,7 +108,7 @@ def test_reponse():
 
             # If there are no benches nearby
             if cursor.rowcount == 0:
-                m = "Hmm ... I couldn't find any benches near you. Want a bench here? Text 'Y'!"
+                m = "Hmm ... I couldn't find any benches near you. Want a bench here? Text 'Y', or 'restart' to try another place!"
                 print "Could not find any benches ..."
 
             # If there are benches
@@ -184,6 +184,7 @@ def test_reponse():
         query = "INSERT INTO desired (lat, lon, datetime) VALUES (%(lat_)s, %(lon_)s, %(time_)s);"
         cursor.execute(query, {'lat_': session['lat'], 'lon_': session['lon'], 'time_': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')})
         m = "Okay! I've saved that location. Text 'restart' to try and find another."
+        conn.commit()
 
     elif greeted and located and named and "restart" not in body.lower():
         m = "I've already found you a bench. Text 'restart' to find another!"
