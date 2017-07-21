@@ -145,13 +145,14 @@ def test_reponse():
 
                     m += " in %s" % (bench["park_name"])
 
+                m += " about %i ft and %s away to the %s!" % (bench["distance"], bench["duration"], ordinal(lon, bench["lon"], lat, bench["lat"]))
+
                 if not bench["name"]:
-                    m += "\nWould you like to name this bench? Text a name, or text 'restart' to start over."
+                    m += " Want to name this bench? Text a name, or text 'restart' to start over."
 
                 # Add distance to bench
                 map_url = short_url("\nhttps://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, bench["lat"], bench["lon"]))
-
-                m += " about %i ft and %s away to the %s!\n%s" % (bench["distance"], bench["duration"], ordinal(lon, bench["lon"], lat, bench["lat"]), map_url)
+                m += "\n%s" % (map_url)
 
                 session["bench"] = bench["id"]
                 print "Found nearest bench -- %s" % (map_url)
