@@ -7,6 +7,7 @@ import os
 import psycopg2
 import urlparse
 import googlemaps
+import json
 
 SECRET_KEY = 'a secret key'
 app = Flask(__name__)
@@ -14,7 +15,6 @@ app.config.from_object(__name__)
 
 # CONNECTING TO POSTGRES
 conn_string = "host='localhost' dbname='bench_buddy' user='brianho' password=''"
-# print the connection string we will use to connect
 print "Connecting to database\n	-> %s" % (conn_string)
 # get a connection, if a connect cannot be made an exception will be raised here
 conn = psycopg2.connect(conn_string)
@@ -46,78 +46,117 @@ def test_reponse():
     located = session.get("located", False)
 
     body = request.values.get('Body')
-    print 'Received request: ' + body
+    print 'User message: "%s" (greeted: %r, located: %r)' % (body, greeted, located)
 
+    # If first time user, send greeting and instructions
     if not greeted:
-        m = "Hi there! This is Boston's Bench Buddy. I'll find the nearest bench. Where are you?"
+        m = "Hi! I'm the Boston Bench Buddy. I'll find a place to sit. Where are you?"
         session["greeted"] = True
+        print "Greeting user ..."
 
+    # Check user response
     elif not located:
+
         # Get text contents
         if "boston" not in body.lower():
-            body = body + " Boston"
+            body = "%s Boston" % (body)
 
-        # Check to see if it is a place
+        # Check to see if user response is a place on Google Maps
         r = gmaps.places(body)
-        print r
-        # Check to see if the message is a place
-        if r['status'] == 'OK':
-            location = r['results'][0]['geometry']['location']
-            lat = str(location['lat'])
-            lon = str(location['lng'])
 
-            # Make a query
-            query = "SELECT id, street, park, ST_Distance_Sphere(geom, st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326)) FROM benches ORDER BY geom <-> st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326) LIMIT 3;"
-            print lon + ", " + lat
+        # Can't find user response as a location
+        if r['status'] == 'ZERO_RESULTS':
+            m = "Hmmm ... I couldn't find your location. Where are you?"
+            print "Could not find user location..."
+
+        # Found user location
+        elif r['status'] == 'OK':
+            session["located"] = True
+
+            # Parse first Google Maps result
+            user = r['results'][0]['geometry']['location']
+            lon, lat = user['lng'], user['lat']
+            print "Found user at %s -- https://www.google.com/maps/search/?api=1&query=%f,%f" % (r['results'][0]['formatted_address'],lat,lon)
+
+            # Make query to database
+            query = "SELECT id, street, park, lon, lat FROM benches WHERE ST_DWithin(st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326), geom, .004) ORDER BY geom <-> st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326) LIMIT 100;"
             cursor.execute(query, {"lon_":lon, "lat_":lat})
 
-            # Retrieve data from query result
-            benches = []
-            for id_, street_, park_, dist_ in cursor:
-                benches.append({"id": id_, "dist": dist_, "street": street_, "park": park_})
+            # If there are no benches nearby
+            if cursor.rowcount == 0:
+                m = "Hmm ... I couldn't find any benches near you. Try another place?"
+                print "Could not find any benches ..."
 
-            # Construct message
-            m = "Nearby benches: \n"
-            for record in benches:
-                m += "Bench"
+            # If there are benches
+            else:
+                # Retrieve data from database query results
+                benches = []
+                for id_, street_, park_, lon_, lat_ in cursor:
+                    benches.append({"id": id_,"street": street_, "park": park_, "lon":lon_, "lat":lat_})
 
-                if  record["street"] != -1:
-                    query = "SELECT name, type FROM streets WHERE id = " + str(record["street"])
+                # Get Google Maps walking distance matrix for query results
+                r = gmaps.distance_matrix(origins="%f,%f" % (lat,lon), destinations=[(bench["lat"],bench["lon"]) for bench in benches], mode="walking", units="imperial")
+
+                # Find the nearest by walking
+                min_dist = 9999
+                min_index = -1
+                for i, bench in enumerate(benches):
+                    bench["distance"] = int(r['rows'][0]['elements'][i]['distance']['value']*3.28084)
+                    bench["duration"] = r['rows'][0]['elements'][i]['duration']['text']
+
+                    if bench["distance"] < min_dist:
+                        min_dist = bench["distance"]
+                        min_index = i
+
+                # Construct message intro
+                m = "Closest bench is"
+                bench = benches[min_index]
+
+                # Add descriptions of landmarks and identifiers, if applicable
+                if bench["street"] != -1:
+                    query = "SELECT name, type FROM streets WHERE id = " + str(bench["street"])
                     cursor.execute(query)
                     street = cursor.fetchone()
 
-                    record["street_name"] = street[0]
-                    record["street_type"] = street[1]
+                    bench["street_name"] = street[0]
+                    bench["street_type"] = street[1]
 
-                    m += " on " + record["street_name"] + " " + record["street_type"]
+                    m += " along %s" % (bench["street_name"].title())
+                    m += " %s" % (bench["street_type"].title()) if bench["street_type"] != "" else ""
 
-                if record["park"] != 0:
-                    query = "SELECT name FROM parks WHERE id = " + str(record["park"])
+                if bench["park"] != 0:
+                    query = "SELECT name FROM parks WHERE id = " + str(bench["park"])
                     cursor.execute(query)
                     park = cursor.fetchone()
 
-                    record["park_name"] = park[0]
+                    bench["park_name"] = park[0]
 
-                    m += " in " + record["park_name"]
+                    m += " in %s" % (bench["park_name"])
 
-                # Convert meters to feet? Walking time?
-                m += " about " + str(int(record["dist"])) + " meters away.\n"
-                session["located"] = True
+                # Add distance to bench
+                m += " about %i ft and %s away!" % (bench["distance"], bench["duration"])
 
-        elif r['status'] == 'ZERO_RESULTS':
-            m = "Hmmm ... I couldn't find that. Try again?"
+                print "Found nearest bench ..."
+                '''
+                # Send bench location to user
+                resp = MessagingResponse()
+                resp.message(m)
 
+                # Construct follow-up message
+                m = "Would you like to find another bench? Text 'Y' to start over."
+                '''
     elif greeted and located and "Y" not in body:
         m = "We've got you a bench! Text 'Y' to start over!"
+        print "Asking if they want to start over ..."
 
     elif "Y" in body:
-        session["welcomed"] = False
-        session["greeted"] = False
+        # session["greeted"] = False
+        session["located"] = False
+        m = "Okay! Where are you?"
+        print "Starting session over ..."
 
     resp = MessagingResponse()
     resp.message(m)
-
-    print "Sent message!"
     return str(resp)
 
 if __name__ == '__main__':
