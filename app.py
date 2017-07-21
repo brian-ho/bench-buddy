@@ -166,11 +166,9 @@ def test_reponse():
 # HELPER FUNCTIONS
 # Gets cardinal direction
 def ordinal(x1, x2, y1, y2):
-    print x1, x2, y1, y2
     dirs = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
     bearing = (90-math.degrees(math.atan2((y2-y1),(x2-x1))))%360
     ix = int(math.floor(((bearing + 22.5)%360)/45))
-    print bearing, ix
     return dirs[ix]
 
 # Gets a short url
