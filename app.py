@@ -117,7 +117,7 @@ def test_reponse():
                 # If there are benches
                 else:
                     print "Found some benches ..."
-                    session.get("found", True)
+                    session["found"] = True
                     # Retrieve data from database query results
                     benches = []
                     for id_, street_, park_, lon_, lat_, name_ in cursor:
