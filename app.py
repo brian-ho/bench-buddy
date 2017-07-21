@@ -186,8 +186,8 @@ def test_reponse():
     elif greeted and located and not found and not named and 'y' == body.lower():
         query = "INSERT INTO desired (lat, lon, datetime) VALUES (%(lat_)s, %(lon_)s, %(time_)s);"
         cursor.execute(query, {'lat_': session['lat'], 'lon_': session['lon'], 'time_': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')})
-        m = "Okay! I've saved that location. Text 'restart' to try and find another."
         conn.commit()
+        m = "Okay! I've saved that location. Text 'restart' to try and find another."
 
     elif greeted and located and named and found and "restart" != body.lower():
         m = "I've already found you a bench. Text 'restart' to find another!"
@@ -209,6 +209,7 @@ def test_reponse():
             else:
                 query = "UPDATE benches SET name = %(name)s WHERE id = %(id)s;"
                 cursor.execute(query, ({"name":body.upper(), "id":session["bench"]}))
+                conn.commit()
 
                 m = "Okay, that bench will be called %s!\nText 'restart' to find another! " % (body.upper())
                 session["named"] = True
