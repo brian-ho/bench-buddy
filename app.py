@@ -22,7 +22,7 @@ print "Connecting to database\n	-> %s" % (conn_string)
 conn = psycopg2.connect(conn_string)
 '''
 urlparse.uses_netloc.append("postgres")
-url = urlparse.urlparse(os.environ["DATABASE_URL"])
+url = urlparse.urlparse(os.environ["HEROKU_POSTGRESQL_YELLOW_URL"])
 
 conn = psycopg2.connect(
     database=url.path[1:],
