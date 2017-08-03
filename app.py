@@ -20,7 +20,6 @@ conn_string = "host='localhost' dbname='bench-buddy' user='brianho' password=''"
 print "Connecting to database\n	-> %s" % (conn_string)
 # get a connection, if a connect cannot be made an exception will be raised here
 conn = psycopg2.connect(conn_string)
-
 '''
 urlparse.uses_netloc.append("postgres")
 url = urlparse.urlparse(os.environ["HEROKU_POSTGRESQL_YELLOW_URL"])
@@ -63,7 +62,6 @@ def test_reponse():
     named = session.get("named", False)
     lat = session.get("lat", -9999)
     lon = session.get("lon", -9999)
-    print restroom_mode
 
     # Switch the thing (object noun)
     thing = "bathroom" if restroom_mode else "bench"
