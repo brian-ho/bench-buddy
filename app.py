@@ -14,6 +14,7 @@ SECRET_KEY = '\xb4\xa2\xe4\x91.%u+\xa1\xe1\xcb\xc5\xb0\x87\x06;6>\xf1)\x06\xd8\x
 app = Flask(__name__)
 app.config.from_object(__name__)
 
+'''
 # CONNECTING TO POSTGRES
 conn_string = "host='localhost' dbname='bench-buddy' user='brianho' password=''"
 print "Connecting to database\n	-> %s" % (conn_string)
@@ -31,7 +32,6 @@ conn = psycopg2.connect(
     host=url.hostname,
     port=url.port
 )
-'''
 
 # conn.cursor will return a cursor object, you can use this cursor to perform queries
 cursor = conn.cursor()
@@ -48,6 +48,8 @@ neighborhoods = ['Boston','Allston','Back Bay','Bay Village','Beacon Hill','Brig
 'Leather District','Dorchester','East Boston','Fenway Kenmore','Hyde Park','Jamaica Plain','Mattapan',
 'Mission Hill','North End','Roslindale','Roxbury','South Boston','South End','West End','West Roxbury']
 
+days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
 # ROUTE FOR ALL INCOMING SMS
 @app.route('/', methods=['GET', 'POST'])
 def test_reponse():
@@ -61,13 +63,15 @@ def test_reponse():
     named = session.get("named", False)
     lat = session.get("lat", -9999)
     lon = session.get("lon", -9999)
+    print restroom_mode
 
-    # Switch the thing
+    # Switch the thing (object noun)
     thing = "bathroom" if restroom_mode else "bench"
     things = "bathrooms" if restroom_mode else "benches"
 
+    # Get user text contents
     body = request.values.get('Body').encode('utf-8')
-    print 'User message: "%s" (greeted: %r, restroom: %r, located: %r, found: %r, bench_id: %r, named: %r, lat: %s, lon: %s)' % (body, restroom_mode, greeted, located, found, bench_id, named, lat, lon)
+    print 'User message: "%s" (greeted: %r, restroom: %r, located: %r, found: %r, bench_id: %r, named: %r, lat: %s, lon: %s)' % (body,greeted, restroom_mode, located, found, bench_id, named, lat, lon)
 
     # If first time user, send greeting and instructions
     if not greeted:
@@ -82,8 +86,14 @@ def test_reponse():
         m = "Okay! I'm also the Boston Bathroom Buddy. I'll find you a place to go. Where are you?\n\n"
         m += "Or text 'bench' to find a place to sit."
 
-        session["restroom_mode"]=True
-        print "Switching to restroom mode ..."
+        session["restroom_mode"] = True
+        session["located"] = False
+        session["named"] = False
+        session["found"] = False
+        session["bench"] = -1
+        session["lat"] = -9999
+        session["lon"] = -9999
+        print "Starting over in restroom mode ..."
 
     # Trigger for bench mode / restart
     elif (body.lower()=="restart" and not restroom_mode) or body.lower() == "n" or body.lower() == "bench":
@@ -97,11 +107,10 @@ def test_reponse():
         session["bench"] = -1
         session["lat"] = -9999
         session["lon"] = -9999
-        print "Starting session over ..."
+        print "Starting over in bench mode ..."
 
     # If greeted, check user response
     elif not located:
-
         # Get contents of user text, adding 'Boston' for good measure
         if all(neighborhood not in body.lower() for neighborhood in neighborhoods) and any(c.isalpha() for c in body.lower()):
             body = "%s Boston" % (body)
@@ -118,7 +127,6 @@ def test_reponse():
 
         # Found user location!
         elif r['status'] == 'OK':
-
             # Parse first Google Maps result
             user = r['results'][0]['geometry']['location']
             lon, lat = user['lng'], user['lat']
@@ -133,24 +141,26 @@ def test_reponse():
 
             # If location is in Boston
             else:
+                session["located"] = True
                 # Make query to database within radius, where 0.001 degree is about 360 feet
                 if not restroom_mode:
                     query = "SELECT id, street, park, lon, lat, name FROM benches WHERE ST_DWithin(st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326), geom, .002) ORDER BY geom <-> st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326) LIMIT 5;"
                     cursor.execute(query, {"lon_":lon, "lat_":lat})
                 else:
-                    query = "SELECT id, address, lon, lat, name FROM restrooms WHERE ST_DWithin(st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326), geom, .0075) ORDER BY geom <-> st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326) LIMIT 1;"
+                    today = days[datetime.datetime.today().weekday()]
+                    query = "SELECT id, address, lon, lat, name, " + today
+                    query += " FROM restrooms WHERE ST_DWithin(st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326), geom, .0075) ORDER BY geom <-> st_setsrid(st_makepoint(%(lon_)s,%(lat_)s),4326);"
                     cursor.execute(query, {"lon_":lon, "lat_":lat})
 
-                session["located"] = True
                 print "Querying database for nearby %s ..." % things
 
-                # If there are no benches nearby
+                # If there are no things nearby
                 if cursor.rowcount == 0:
                     m = "Hmm ... I couldn't find any %s near you." % things
                     m+= "\n\nWant a %s here? Text 'Y', or 'restart' to try another place!" % thing
                     print "Could not find any %s ..." % things
 
-                # If there are benches
+                # If there are things!
                 else:
                     session["found"] = True
                     print "Found some %s ..." % things
@@ -160,88 +170,133 @@ def test_reponse():
                     if not restroom_mode:
                         for id_, street_, park_, lon_, lat_, name_ in cursor:
                             results.append({"id": id_,"street": street_, "park": park_, "lon":lon_, "lat":lat_, "name":name_})
-
                     elif restroom_mode:
-                        for id_, address_, lon_, lat_, name_ in cursor:
-                            results.append({"id": id_,"address": address_, "lon":lon_, "lat":lat_, "name":name_})
+                        for id_, address_, lon_, lat_, name_, hours_ in cursor:
+                            results.append({"id": id_,"address": address_, "lon":lon_, "lat":lat_, "name":name_, "hours":hours_})
 
                     # Get Google Maps walking distance matrix for query results
                     print "Asking Google for distances ..."
                     r = gmaps.distance_matrix(origins="%f,%f" % (lat,lon), destinations=[(result["lat"],result["lon"]) for result in results], mode="walking", units="imperial")
 
                     # Find the nearest thing by walking, using Google
-                    min_dist = 9999
-                    min_index = -1
-
+                    best = 0
                     for i, result in enumerate(results):
                         result["distance"] = int(r['rows'][0]['elements'][i]['distance']['value']*3.28084)
                         result["duration"] = r['rows'][0]['elements'][i]['duration']['text']
-                        if result["distance"] < min_dist:
-                            min_dist = result["distance"]
-                            min_index = i
 
-                    best_result = results[min_index]
+                    # Sort results by walking distance
+                    results = sorted(results, key=lambda k: k['distance'])
+                    best_result = results[best]
 
-                    # Construct message intro
-                    m = "Closest %s is" % thing
+                    # Make sure first result is open, or see if nothing is open
+                    closed = False;
+                    start = ""
+                    end = ""
+                    if restroom_mode:
+                        # Get current time
+                        time = datetime.datetime.now().time()
+                        print "Checking if open ..."
 
-                    if best_result["name"]:
-                        m += " %s" % (best_result["name"])
+                        # Loop over results in order until either one is open or all exhausted
+                        while True:
+                            best_result = results[best]
+                            # If closed all day
+                            if best_result["hours"] == "closed":
+                                closed = True;
+                                best += 1
+                            # Check against saved start and end times
+                            else:
+                                start = datetime.datetime.strptime(best_result["hours"][:5],'%H:%M').time()
+                                end = datetime.datetime.strptime(best_result["hours"][-5:],'%H:%M').time()
+                                # If closed
+                                if start > time and time > end:
+                                    closed = True;
+                                    best += 1
+                                # If open
+                                elif start < time and time < end:
+                                    closed = False
+                                    break
+                            # If at the end of results
+                            if best == len(results):
+                                break
 
-                        session["named"] = True
+                    # Message if result is open
+                    if not closed:
+                        # Construct message intro
+                        m = "Closest %s is" % thing
 
-                    # MESSAGE ADDITIONS FOR BENCHES
-                    if not restroom_mode:
-                        # Add descriptions of landmarks and identifiers, if applicable
-                        # Streets
-                        if best_result["street"] != -1:
-                            query = "SELECT name, type FROM streets WHERE id = %i" % (best_result["street"])
-                            cursor.execute(query)
-                            street = cursor.fetchone()
+                        if best_result["name"]:
+                            m += " %s" % best_result["name"]
+                            session["named"] = True
 
-                            best_result["street_name"] = street[0]
-                            best_result["street_type"] = street[1]
+                        # MESSAGE ADDITIONS FOR BENCHES
+                        if not restroom_mode:
+                            # Add descriptions of landmarks and identifiers, if applicable
+                            # Streets
+                            if best_result["street"] != -1:
+                                query = "SELECT name, type FROM streets WHERE id = %i" % (best_result["street"])
+                                cursor.execute(query)
+                                street = cursor.fetchone()
 
-                            m += " along %s" % (best_result["street_name"].title())
-                            if best_result["street_type"] != "":
-                                m += " %s" % (best_result["street_type"].title())
+                                best_result["street_name"] = street[0]
+                                best_result["street_type"] = street[1]
 
-                        # Parks
-                        if best_result["park"] != 0:
-                            query = "SELECT name FROM parks WHERE id = %i" % (best_result["park"])
-                            cursor.execute(query)
-                            park = cursor.fetchone()
+                                m += " along %s" % (best_result["street_name"].title())
+                                if best_result["street_type"] != "":
+                                    m += " %s" % (best_result["street_type"].title())
 
-                            best_result["park_name"] = park[0]
+                            # Parks
+                            if best_result["park"] != 0:
+                                query = "SELECT name FROM parks WHERE id = %i" % (best_result["park"])
+                                cursor.execute(query)
+                                park = cursor.fetchone()
 
-                            m += " in %s" % (best_result["park_name"])
+                                best_result["park_name"] = park[0]
 
-                    # MESSAGE ADDITIONS FOR BATHROOMS
-                    elif restroom_mode:
-                        m += " at %s" % (best_result["address"])
+                                m += " in %s" % (best_result["park_name"])
 
-                    # Message conclusion
-                    m += " ... about %i ft and %s away to the %s!" % (best_result["distance"], best_result["duration"], ordinal(lon, best_result["lon"], lat, best_result["lat"]))
+                        # MESSAGE ADDITIONS FOR BATHROOMS
+                        elif restroom_mode:
+                            m += " at %s, open" % (best_result["address"])
+                            if start == datetime.time(0, 0, 0) and end == datetime.time(23, 59, 00):
+                                m += " 24 hours"
+                            else:
+                                m += " until %s" % (end.strftime("%-I:%M %p"))
 
-                    if not best_result["name"]:
-                        m += "\n\nWant to name this bench? Text a name, or text 'restart' or 'N' to start over."
-                    else:
-                        m += "\n\nText 'restart' to find another!"
+                        # Message conclusion
+                        m += " ... about %i ft and %s away to the %s!" % (best_result["distance"], best_result["duration"], ordinal(lon, best_result["lon"], lat, best_result["lat"]))
 
-                    # Add distance to thing
-                    map_url = short_url("\nhttps://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, best_result["lat"], best_result["lon"]))
-                    m += "\n%s" % (map_url)
+                        if not best_result["name"]:
+                            m += "\n\nWant to name this bench? Text a name, or text 'restart' or 'N' to start over."
+                        else:
+                            m += "\n\nText 'restart' to find another!"
 
-                    if not restroom_mode:
-                        session["bench"] = best_result["id"]
-                    print "Found nearest %s -- %s" % (thing, map_url)
+                        # Add map to message
+                        map_url = short_url("\nhttps://www.google.com/maps/dir/?api=1&origin=%s,%s&destination=%s,%s&travelmode=walking" % (lat, lon, best_result["lat"], best_result["lon"]))
+                        m += "\n%s" % (map_url)
+
+                        if not restroom_mode:
+                            session["bench"] = best_result["id"]
+                        print "Found nearest %s -- %s" % (thing, map_url)
+
+                    # Message if all results are closed
+                    elif closed:
+                        m = "Sorry, all nearby %s are closed." % thing
+                        m+= "\n\nWant a %s open here? Text 'Y', or 'restart' to try another place!" % thing
+
+                        print "Could not find any open %s ..." % things
 
     # Making a request
     elif greeted and located and not found and not named and 'y' == body.lower():
         query = "INSERT INTO desired (lat, lon, datetime, type) VALUES (%(lat_)s, %(lon_)s, %(time_)s, %(type_)s);"
         cursor.execute(query, {'lat_': session['lat'], 'lon_': session['lon'], 'time_': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z'), 'type_': thing})
         conn.commit()
-        m = "Okay! I've saved that location for a %s. Text 'restart' to try and find another." % thing
+
+        m = "Okay! I've saved that location for a %s. Text 'restart' to try and find another %s." % (thing, thing)
+
+        session["found"] = True
+        session["named"] = True
+        print "Saving sugested location for a %s at %s, %s" % (thing, session['lat'], session['lon'])
 
     # If there are further messages after finding
     elif greeted and located and found and named and "restart" != body.lower():
