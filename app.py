@@ -15,6 +15,7 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 
 
+'''
 # CONNECTING TO POSTGRES
 conn_string = "host='localhost' dbname='bench-buddy' user='brianho' password=''"
 print "Connecting to database\n	-> %s" % (conn_string)
@@ -31,7 +32,6 @@ conn = psycopg2.connect(
     host=url.hostname,
     port=url.port
 )
-'''
 # conn.cursor will return a cursor object, you can use this cursor to perform queries
 cursor = conn.cursor()
 print "Connected!\n"
