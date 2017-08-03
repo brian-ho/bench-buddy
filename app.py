@@ -14,7 +14,7 @@ SECRET_KEY = '\xb4\xa2\xe4\x91.%u+\xa1\xe1\xcb\xc5\xb0\x87\x06;6>\xf1)\x06\xd8\x
 app = Flask(__name__)
 app.config.from_object(__name__)
 
-'''
+
 # CONNECTING TO POSTGRES
 conn_string = "host='localhost' dbname='bench-buddy' user='brianho' password=''"
 print "Connecting to database\n	-> %s" % (conn_string)
@@ -31,7 +31,7 @@ conn = psycopg2.connect(
     host=url.hostname,
     port=url.port
 )
-
+'''
 # conn.cursor will return a cursor object, you can use this cursor to perform queries
 cursor = conn.cursor()
 print "Connected!\n"
@@ -73,7 +73,7 @@ def test_reponse():
 
     # If first time user, send greeting and instructions
     if not greeted:
-        m = "Hi! I'm the Boston %s Buddy. I'll find you a place to sit. Where are you?\n\n"
+        m = "Hi! I'm the Boston Bench Buddy. I'll find you a place to sit. Where are you?\n\n"
         m += "Or text 'bathroom' to find a place to go."
 
         session["greeted"] = True
