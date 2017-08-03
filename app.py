@@ -84,17 +84,10 @@ def test_reponse():
         session["named"] = False
         session["found"] = False
         session["bench"] = -1
-<<<<<<< HEAD
         session["lat"] = -9999
         session["lon"] = -9999
         m = "Okay! I'm the Boston Bench Buddy. I'll find you a place to sit. Where are you?\n\n"
         m += "Or text 'bathroom' to find a place to go."
-=======
-        session.get("lat", -9999)
-        session.get("lon", -9999)
-
-        m = "Okay! I'm the Boston Bench Buddy. I'll find you a place to sit. Where are you?"
->>>>>>> origin/master
         print "Starting session over ..."
 
     # If greeted, check user response
