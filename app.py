@@ -122,19 +122,8 @@ def test_reponse():
             map_url = short_url ("https://www.google.com/maps/search/?api=1&query=%f,%f" % (lat,lon))
             print "Found user at %s -- %s" % (r['results'][0]['formatted_address'], map_url)
 
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-            if "boston" not in r['results'][0]['formatted_address'].lower():
-                m = "Sorry, I can only find things in the city of Boston! Try another place?"
-=======
-=======
->>>>>>> origin/master
->>>>>>> Stashed changes
             if all(zipcode not in r['results'][0]['formatted_address'].lower() for zipcode in zipcodes) and all(neighborhood.lower() not in r['results'][0]['formatted_address'].lower() for neighborhood in neighborhoods):
                 m = "Sorry, I can only find benches in the city of Boston! Try another place?"
->>>>>>> origin/master
 
             else:
                 session["located"] = True
