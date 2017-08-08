@@ -10,7 +10,7 @@ import math
 import json
 import datetime
 
-SECRET_KEY = '\xb4\xa2\xe4\x91.%u+\xa1\xe1\xcb\xc5\xb0\x87\x06;6>\xf1)\x06\xd8\xce\x88'
+SECRET_KEY = #PUT YOUR KEY HERE
 app = Flask(__name__)
 app.config.from_object(__name__)
 
