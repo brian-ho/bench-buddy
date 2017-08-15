@@ -1,3 +1,5 @@
+DROP TABLE restrooms;
+
 CREATE TABLE restrooms 
 (id integer, name text, address text, monday text, tuesday text, wednesday text,
 thursday text, friday text, saturday text, sunday text, lon double precision,
