@@ -3,6 +3,6 @@ CREATE TABLE restrooms
 thursday text, friday text, saturday text, sunday text, lon double precision,
 lat double precision, geom geometry);
 
-COPY restrooms FROM 'restrooms.csv' DELIMITER ',' CSV HEADER;
+\COPY restrooms FROM 'restrooms.csv' DELIMITER ',' CSV HEADER;
 
 UPDATE restrooms SET geom = ST_SetSRID(ST_MakePoint(lon,lat),4326);
